@@ -76,7 +76,7 @@ write.csv(Thrownout, paste("Thrownout",paste(unique(ScallopData$sample_year),col
                            sep="_")) #exports thrownout data into csv
 
 #Assign Bins and subsample data####
-{
+
 ScallopData$Bin<- cut(ScallopData$length, Bins$Bin.Start) #assign scallops to bin
 ScallopData$BinLocation<-mapply(paste,ScallopData$location_code,ScallopData$Bin) #set unique bins by location
 scallop.invoice<- as.data.frame(matrix(ncol = length(names(ScallopData)), nrow=0)) #make dummy dataframe
@@ -85,7 +85,7 @@ colnames(scallop.invoice)=names(ScallopData) #rename variables
 for (i in unique(ScallopData$BinLocation)){
   
   subset<-ScallopData[ScallopData$BinLocation == i,]
-  subset<- sample_n(subset,6, replace = TRUE)
+  subset<- head(subset,3, replace = TRUE)
   scallop.invoice[nrow(scallop.invoice)+1:nrow(subset),]<-subset
 }
 
@@ -100,4 +100,5 @@ ggplot()+
 write.csv(scallop.invoice, paste("Scallop.invoive",paste(unique(ScallopData$sample_year),collapse = "."),
                            paste(unique(ScallopData$fishery_code),collapse = "."), ".csv",
                            sep="_")) #exports thrownout data into csv
-}
+
+
