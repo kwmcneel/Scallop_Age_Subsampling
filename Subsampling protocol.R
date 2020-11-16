@@ -85,7 +85,7 @@ colnames(scallop.invoice)=names(ScallopData) #rename variables
 for (i in unique(ScallopData$BinLocation)){
   
   subset<-ScallopData[ScallopData$BinLocation == i,]
-  subset<- head(subset,3, replace = TRUE)
+  subset<-sample_n(subset,6, replace = TRUE)
   scallop.invoice[nrow(scallop.invoice)+1:nrow(subset),]<-subset
 }
 
