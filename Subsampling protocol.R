@@ -85,7 +85,7 @@ colnames(scallop.invoice)=names(ScallopData) #rename variables
 for (i in unique(ScallopData$BinLocation)){
   
   subset<-ScallopData[ScallopData$BinLocation == i,]
-  subset<- head(subset,3, replace = TRUE)
+  subset<-sample_n(subset,6, replace = TRUE)
   scallop.invoice[nrow(scallop.invoice)+1:nrow(subset),]<-subset
 }
 
@@ -95,7 +95,8 @@ ggplot()+
   geom_histogram(ScallopData,mapping= aes(x=length),fill="lightblue",binwidth = 2)+
   geom_histogram(scallop.invoice, mapping= aes(x=length),fill="grey5",binwidth = 2)+
   facet_grid(location_code~.,scales="free_y")+
-  theme_bw()
+  theme_bw()+
+  labs(fill="Sample")
 
 write.csv(scallop.invoice, paste("Scallop.invoive",paste(unique(ScallopData$sample_year),collapse = "."),
                            paste(unique(ScallopData$fishery_code),collapse = "."), ".csv",
