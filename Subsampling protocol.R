@@ -106,6 +106,7 @@ scallop.measured$sample_date<-as.Date(scallop.measured$sample_date)
 scallop.measured$date_sampled<-as.Date(scallop.measured$date_sampled)
 
 #sample 2 scallops from each location:bin
+#sample 30 scallops from each location:bin
 for (i in unique(scallop.invoice$location_code)){
   subset<-scallop.invoice[scallop.invoice$location_code == i,]
   if (subset>30){
@@ -171,6 +172,11 @@ if(unique(scallop.invoice$fishery_code)== "SU"){
     scallop.invoicing[,c(17,18)]<-cbind(scallop.invoice$submitter_specimen_id,scallop.invoice$submitter_specimen_id)
 }
 
+if(unique(scallop.measured$fishery_code)== "CO"){
+  scallop.measured$ADU_SPECIMEN_ID<-as.numeric(substr(scallop.measured$submitter_specimen_id,start=24,stop=26))
+}else{
+  scallop.measured$ADU_SPECIMEN_ID<-scallop.measured$submitter_specimen_id
+}
 
 scallop.invoicing.exclude<-cbind(scallop.exclude[,c(1:12,12,14)],
                          as.data.frame(rep("Valve",length(scallop.exclude$sample_year),colnames="AGE STRUCTURE")),
@@ -195,12 +201,18 @@ colnames(scallop.field.exclude)=c("ADU SAMPLE ID",	"ADU SPECIMEN NUMBER",	"SAMPL
                           "FIELD SPECIMEN COMMENT")
 
 scallop.field.exclude$`FISH WEIGHT TYPE`<-ifelse(scallop.field.exclude$`FISH WEIGHT g`>0,"WH","")
+scallop.field<-left_join(scallop.field,scallop.measured[,c(24,25,12)], by=c("ADU SAMPLE ID"="ADUID","ADU SPECIMEN NUMBER"="ADU_SPECIMEN_ID"))
+scallop.field$submitter_specimen_id[!is.na(scallop.field$submitter_specimen_id)] <- "Measure"
+scallop.field$`FIELD SPECIMEN COMMENT`<-paste(na.omit(scallop.field$`FIELD SPECIMEN COMMENT`),scallop.field$submitter_specimen_id)
+scallop.field$`FIELD SPECIMEN COMMENT`<-na_if(scallop.field$`FIELD SPECIMEN COMMENT`," NA")
+scallop.field<-scallop.field[,-12]
 
 #create subdirectory for .xlsx
 {dir.create(file.path(getwd(), "Invoices"))
 dir.create(file.path(getwd(), "Field_Data"))
 dir.create(file.path(getwd(), "Excluded_Invoices"))
-dir.create(file.path(getwd(), "Excluded_Field_Data"))}
+dir.create(file.path(getwd(), "Excluded_Field_Data"))
+dir.create(file.path(getwd(), "Line_Profile_list"))}
 
 #Export Sample Invoices####
 wb <- loadWorkbook("Scallop_Invoice_template.xlsx")
@@ -219,8 +231,8 @@ saveWorkbook(wb,paste("Excluded_Invoices/Scallop.invoive_excluded",paste(unique(
 #Export Field Data####
 wb <- loadWorkbook("Scallop_Field_Data_template.xlsx")
 writeData(wb,x=scallop.field,sheet="FIELD DATA IMPORT", startRow = 2, startCol = 1, colNames = FALSE, rowNames = FALSE)
-saveWorkbook(wb,paste("Field_Data/Scallop.Field_Data",paste(unique(ScallopData$sample_year),collapse = "."),
-                      paste(unique(ScallopData$fishery_code),collapse = "."), ".xlsx",
+saveWorkbook(wb,paste("Field_Data/Scallop.Field_Data",paste(unique(scallop.invoice$sample_year),collapse = "."),
+                      paste(unique(scallop.invoice$fishery_code),collapse = "."), ".xlsx",
                       sep="_"),overwrite = T)
 #Export Field Data of excluded specimens
 wb <- loadWorkbook("Scallop_Field_Data_template.xlsx")
@@ -228,4 +240,7 @@ writeData(wb,x=scallop.field.exclude,sheet="FIELD DATA IMPORT", startRow = 2, st
 saveWorkbook(wb,paste("Excluded_Field_Data/Scallop.Field_Data.Excluded",paste(unique(ScallopData$sample_year),collapse = "."),
                       paste(unique(ScallopData$fishery_code),collapse = "."), ".xlsx",
                       sep="_"),overwrite = T)
-
+#Export list of specimens to measure
+write.csv(scallop.measured[,c(1,24,25,2,4,5,7,8,12,22)], paste("Line_Profile_list/ToMeasure",paste(unique(scallop.measured$sample_year),collapse = "."),
+                           paste(unique(scallop.measured$fishery_code),collapse = "."), ".csv",
+                           sep="_")) #exports thrownout data into csv
