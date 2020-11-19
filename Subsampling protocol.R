@@ -106,6 +106,7 @@ scallop.measured$sample_date<-as.Date(scallop.measured$sample_date)
 scallop.measured$date_sampled<-as.Date(scallop.measured$date_sampled)
 
 #sample 2 scallops from each location:bin
+#sample 30 scallops from each location:bin
 for (i in unique(scallop.invoice$location_code)){
   subset<-scallop.invoice[scallop.invoice$location_code == i,]
   if (subset>30){
