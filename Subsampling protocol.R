@@ -17,6 +17,7 @@
 while(!require(readr)){install.packages("readr")}
 while(!require(ggplot2)){install.packages("ggplot2")}
 while(!require(dplyr)){install.packages("dplyr")}
+while(!require(openxlsx)){install.packages("openxlsx")}
 
 #Make Bins
 {rm(list = ls())
@@ -81,25 +82,113 @@ ScallopData$Bin<- cut(ScallopData$length, Bins$Bin.Start) #assign scallops to bi
 ScallopData$BinLocation<-mapply(paste,ScallopData$location_code,ScallopData$Bin) #set unique bins by location
 scallop.invoice<- as.data.frame(matrix(ncol = length(names(ScallopData)), nrow=0)) #make dummy dataframe
 colnames(scallop.invoice)=names(ScallopData) #rename variables
+scallop.invoice$sample_date<-as.Date(scallop.invoice$sample_date)
+scallop.invoice$date_sampled<-as.Date(scallop.invoice$date_sampled)
+scallop.invoice$Bin<-factor(scallop.invoice$Bin)
 #sample 6 scallops from each location:bin
 for (i in unique(ScallopData$BinLocation)){
-  
   subset<-ScallopData[ScallopData$BinLocation == i,]
-  subset<-sample_n(subset,6, replace = TRUE)
+  if (subset>6){
+    subset<-sample_n(subset,5, replace = TRUE)
+    } 
+      
   scallop.invoice[nrow(scallop.invoice)+1:nrow(subset),]<-subset
 }
 
 scallop.invoice<-unique(scallop.invoice) #remove redundancies
 
+#Track shell excluded
+scallop.exclude<-anti_join(ScallopData,scallop.invoice, by=c("submitter_sample_id","submitter_specimen_id"))
+
+#Plot invoiced shell histogram
 ggplot()+
-  geom_histogram(ScallopData,mapping= aes(x=length),fill="lightblue",binwidth = 2)+
-  geom_histogram(scallop.invoice, mapping= aes(x=length),fill="grey5",binwidth = 2)+
+  geom_histogram(ScallopData,mapping= aes(x=length, fill="Collection"), binwidth = 2)+
+  geom_histogram(scallop.invoice, mapping= aes(x=length, fill="Subsample"), binwidth = 2)+
   facet_grid(location_code~.,scales="free_y")+
+  labs(x="Shell Height", y="Count",fill="")+
   theme_bw()+
-  labs(fill="Sample")
+  scale_fill_manual(values=c("grey","black"))
+
+#Convert ADU sample ID from Observer samples
+if(unique(scallop.invoice$fishery_code)== "CO"){
+  scallop.invoice$ADUID<-paste(substr(scallop.invoice$sample_year,start = 3, stop = 4),
+                                scallop.invoice$management_area_code,
+                                substr(scallop.invoice$effort_no,start=6,stop=9),"~",
+                                substr(formatC(scallop.invoice$trip_no, width=2, flag="0"),start=2,stop=4),sep = "")
+} else {
+  scallop.invoice$ADUID<-scallop.invoice$submitter_sample_id   
+}
+
+if(unique(scallop.exclude$fishery_code)== "CO"){
+  scallop.exclude$ADUID<-paste(substr(scallop.exclude$sample_year,start = 3, stop = 4),
+                               scallop.exclude$management_area_code,
+                               substr(scallop.exclude$effort_no,start=6,stop=9),"~",
+                               substr(formatC(scallop.exclude$trip_no, width=2, flag="0"),start=2,stop=4),sep = "")
+} else {
+  scallop.exclude$ADUID<-scallop.exclude$submitter_sample_id   
+}
+
+
+
+scallop.field<-cbind(scallop.invoice$ADUID,
+                     as.numeric(substr(scallop.invoice$submitter_specimen_id,start=24,stop=26)),
+                     scallop.invoice$sample_date,scallop.invoice[,c(14:21)])
+colnames(scallop.field)=c("ADU SAMPLE ID",	"ADU SPECIMEN NUMBER",	"SAMPLE DATE",	
+                          "FIELD SPECIES CODE",	"FISH LENGTH mm",	"FISH LENGTH TYPE",
+                          "FISH WEIGHT g",	"FISH WEIGHT TYPE",	"GENDER",	"REGIONAL_MATURITY",
+                          "FIELD SPECIMEN COMMENT")
+scallop.field$`FISH WEIGHT TYPE`<-ifelse(scallop.field$`FISH WEIGHT g`>0,"WH","")
+                              
+scallop.invoicing<-cbind(scallop.invoice[,c(1:12,12,14)],
+                         as.data.frame(rep("Valve",length(scallop.invoice$sample_year),colnames="AGE STRUCTURE")),
+                         scallop.invoice$ADUID,
+                         as.numeric(substr(scallop.invoice$submitter_specimen_id,start=24,stop=26)),as.numeric(substr(scallop.invoice$submitter_specimen_id,start=24,stop=26)))
 
 write.csv(scallop.invoice, paste("Scallop.invoive",paste(unique(ScallopData$sample_year),collapse = "."),
                            paste(unique(ScallopData$fishery_code),collapse = "."), ".csv",
                            sep="_")) #exports thrownout data into csv
 
+
+scallop.field.exclude<-cbind(scallop.exclude$ADUID,
+                     as.numeric(substr(scallop.exclude$submitter_specimen_id,start=24,stop=26)),
+                     scallop.exclude$sample_date,scallop.exclude[,c(14:21)])
+
+colnames(scallop.field.exclude)=c("ADU SAMPLE ID",	"ADU SPECIMEN NUMBER",	"SAMPLE DATE",	
+                          "FIELD SPECIES CODE",	"FISH LENGTH mm",	"FISH LENGTH TYPE",
+                          "FISH WEIGHT g",	"FISH WEIGHT TYPE",	"GENDER",	"REGIONAL_MATURITY",
+                          "FIELD SPECIMEN COMMENT")
+scallop.field.exclude$`FISH WEIGHT TYPE`<-ifelse(scallop.field.exclude$`FISH WEIGHT g`>0,"WH","")
+
+#create subdirectory for .xlsx
+{dir.create(file.path(getwd(), "Invoices"))
+dir.create(file.path(getwd(), "Field_Data"))
+dir.create(file.path(getwd(), "Excluded_Invoices"))
+dir.create(file.path(getwd(), "Excluded_Field_Data"))}
+
+#Export Sample Invoices####
+wb <- loadWorkbook("Scallop_Invoice_template.xlsx")
+writeData(wb,x=scallop.invoicing,sheet="Sheet1", startRow = 8, startCol = 1, colNames = FALSE, rowNames = FALSE)
+writeData(wb,x=format(Sys.time(), "%m/%d/%Y"),sheet="Sheet1", startRow = 4, startCol = 14, colNames = FALSE, rowNames = FALSE)
+saveWorkbook(wb,paste("Invoices/Scallop.invoive",paste(unique(ScallopData$sample_year),collapse = "."),
+                      paste(unique(ScallopData$fishery_code),collapse = "."), ".xlsx",
+                      sep="_"),overwrite = T)
+#Export Sample Invoice of excluded specimens
+wb <- loadWorkbook("Scallop_Invoice_template.xlsx")
+writeData(wb,x=scallop.exclude,sheet="Sheet1", startRow = 8, startCol = 1, colNames = FALSE, rowNames = FALSE)
+writeData(wb,x=format(Sys.time(), "%m/%d/%Y"),sheet="Sheet1", startRow = 4, startCol = 14, colNames = FALSE, rowNames = FALSE)
+saveWorkbook(wb,paste("Excluded_Invoices/Scallop.invoive_excluded",paste(unique(ScallopData$sample_year),collapse = "."),
+                      paste(unique(ScallopData$fishery_code),collapse = "."), ".xlsx",
+                      sep="_"),overwrite = T)
+#Export Field Data####
+wb <- loadWorkbook("Scallop_Field_Data_template.xlsx")
+writeData(wb,x=scallop.field,sheet="FIELD DATA IMPORT", startRow = 2, startCol = 1, colNames = FALSE, rowNames = FALSE)
+saveWorkbook(wb,paste("Field_Data/Scallop.Field_Data",paste(unique(ScallopData$sample_year),collapse = "."),
+                      paste(unique(ScallopData$fishery_code),collapse = "."), ".xlsx",
+                      sep="_"),overwrite = T)
+#Export Field Data of excluded specimens
+wb <- loadWorkbook("Scallop_Field_Data_template.xlsx")
+writeData(wb,x=scallop.field.exclude,sheet="FIELD DATA IMPORT", startRow = 2, startCol = 1, colNames = FALSE, rowNames = FALSE)
+saveWorkbook(wb,paste("Excluded_Field_Data/Scallop.Field_Data.Excluded",paste(unique(ScallopData$sample_year),collapse = "."),
+                      paste(unique(ScallopData$fishery_code),collapse = "."), ".xlsx",
+                      sep="_"),overwrite = T)
 
