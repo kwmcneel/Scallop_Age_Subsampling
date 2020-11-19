@@ -88,10 +88,14 @@ scallop.invoice$Bin<-factor(scallop.invoice$Bin)
 #sample 6 scallops from each location:bin
 for (i in unique(ScallopData$BinLocation)){
   subset<-ScallopData[ScallopData$BinLocation == i,]
+<<<<<<< HEAD
   if (subset>6){
     subset<-sample_n(subset,5, replace = TRUE)
     } 
       
+=======
+  subset<-sample_n(subset,6, replace = TRUE)
+>>>>>>> 2f8ed2a3da9feb2c9747e624ebce10acb72bfaa3
   scallop.invoice[nrow(scallop.invoice)+1:nrow(subset),]<-subset
 }
 
