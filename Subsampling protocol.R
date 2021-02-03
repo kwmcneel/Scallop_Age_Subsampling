@@ -21,6 +21,8 @@ while(!require(openxlsx)){install.packages("openxlsx")}
 while(!require(naniar)){install.packages("naniar")}
 while(!require(readxl)){install.packages("readxl")}
 
+
+
 #Make Bins
 {rm(list = ls())
   Bins<-as.data.frame(c(0,25,50,75,77,79,81,83,85,87,89,91,93,95,97,99,101,103,105,107,109,111,113,115,117,119,121,123,125,
@@ -34,7 +36,7 @@ ScallopData<- read_csv(file=file.choose(),
   effort_no = col_character(), field_species_code = col_character(), 
   gear_code = col_character(), management_area_code = col_character(), 
   maturity_code = col_character(), 
-  sample_date = col_date(format = "%m-%d-%Y"), 
+  sample_date = col_date(format = "%m/%d/%Y"), 
   specimen_comment = col_character(), 
   submitter_sample_id = col_character()))
 
@@ -114,18 +116,20 @@ scallop.exclude<-anti_join(ScallopData,scallop.invoice, by=c("submitter_sample_i
 
 if(unique(scallop.invoice$fishery_code)== "CO"){
   scallop.invoice$ADUID<-paste(substr(scallop.invoice$sample_year,start = 3, stop = 4),
-                               scallop.invoice$management_area_code,
+                               substr(scallop.invoice$submitter_sample_id,start=1,stop=1),
                                substr(scallop.invoice$effort_no,start=6,stop=9),"~",
-                               substr(formatC(scallop.invoice$trip_no, width=2, flag="0"),start=2,stop=4),sep = "")
+                               substr(formatC(scallop.invoice$trip_no, width=3, flag="0"),start=1,stop=4),sep = "")
+  
+?formatC  
 } else {
   scallop.invoice$ADUID<-scallop.invoice$submitter_sample_id   
 }
 
 if(unique(scallop.exclude$fishery_code)== "CO"){
   scallop.exclude$ADUID<-paste(substr(scallop.exclude$sample_year,start = 3, stop = 4),
-                               scallop.exclude$management_area_code,
+                               substr(scallop.exclude$submitter_sample_id,start=1,stop=1),
                                substr(scallop.exclude$effort_no,start=6,stop=9),"~",
-                               substr(formatC(scallop.exclude$trip_no, width=2, flag="0"),start=2,stop=4),sep = "")
+                               substr(formatC(scallop.exclude$trip_no, width=2, flag="0"),start=1,stop=4),sep = "")
 } else {
   scallop.exclude$ADUID<-scallop.exclude$submitter_sample_id   
 }
@@ -163,9 +167,15 @@ ggplot()+
 
 
 
-scallop.field<-cbind(scallop.invoice$ADUID,
-                     as.numeric(substr(scallop.invoice$submitter_specimen_id,start=24,stop=26)),
-                     scallop.invoice$sample_date,scallop.invoice[,c(14:21)])
+if(unique(scallop.invoice$fishery_code)== "CO"){
+  scallop.field<-cbind(scallop.invoice$ADUID,
+                       as.numeric(substr(scallop.invoice$submitter_specimen_id,start=24,stop=26)),
+                       scallop.invoice$sample_date,scallop.invoice[,c(14:21)])
+}else{
+  scallop.field<-cbind(scallop.invoice$ADUID,
+                       as.numeric(scallop.invoice$submitter_specimen_id),
+                       scallop.invoice$sample_date,scallop.invoice[,c(14:21)])
+}
 colnames(scallop.field)=c("ADU SAMPLE ID",	"ADU SPECIMEN NUMBER",	"SAMPLE DATE",	
                           "FIELD SPECIES CODE",	"FISH LENGTH mm",	"FISH LENGTH TYPE",
                           "FISH WEIGHT g",	"FISH WEIGHT TYPE",	"GENDER",	"REGIONAL_MATURITY",
