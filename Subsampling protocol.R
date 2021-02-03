@@ -19,6 +19,7 @@ while(!require(ggplot2)){install.packages("ggplot2")}
 while(!require(dplyr)){install.packages("dplyr")}
 while(!require(openxlsx)){install.packages("openxlsx")}
 while(!require(naniar)){install.packages("naniar")}
+while(!require(readxl)){install.packages("readxl")}
 
 #Make Bins
 {rm(list = ls())
@@ -38,6 +39,7 @@ ScallopData<- read_csv(file=file.choose(),
   submitter_sample_id = col_character()))
 
 Location <- read_excel("Location.xlsx")
+
 
 #Assign Bin and clean data####
 ###This script removes shell that have no length, length of 0, weight of 0 for survey scallops, and
@@ -101,6 +103,33 @@ for (i in unique(ScallopData$BinLocation)){
 
 scallop.invoice<-unique(scallop.invoice) #remove redundancies
 
+
+#Track shell excluded
+ScallopData<-dplyr::bind_rows(ScallopData,Thrownout)
+ScallopData<-unique(ScallopData) #remove redundancies
+scallop.exclude<-anti_join(ScallopData,scallop.invoice, by=c("submitter_sample_id","submitter_specimen_id"))
+
+
+#Convert ADU sample ID from Observer samples
+
+if(unique(scallop.invoice$fishery_code)== "CO"){
+  scallop.invoice$ADUID<-paste(substr(scallop.invoice$sample_year,start = 3, stop = 4),
+                               scallop.invoice$management_area_code,
+                               substr(scallop.invoice$effort_no,start=6,stop=9),"~",
+                               substr(formatC(scallop.invoice$trip_no, width=2, flag="0"),start=2,stop=4),sep = "")
+} else {
+  scallop.invoice$ADUID<-scallop.invoice$submitter_sample_id   
+}
+
+if(unique(scallop.exclude$fishery_code)== "CO"){
+  scallop.exclude$ADUID<-paste(substr(scallop.exclude$sample_year,start = 3, stop = 4),
+                               scallop.exclude$management_area_code,
+                               substr(scallop.exclude$effort_no,start=6,stop=9),"~",
+                               substr(formatC(scallop.exclude$trip_no, width=2, flag="0"),start=2,stop=4),sep = "")
+} else {
+  scallop.exclude$ADUID<-scallop.exclude$submitter_sample_id   
+}
+
 #Subsample for profile measurement
 
 scallop.measured<- as.data.frame(matrix(ncol = length(names(scallop.invoice)), nrow=0)) #make dummy dataframe
@@ -121,11 +150,6 @@ for (i in unique(scallop.invoice$location_code)){
 scallop.measured<-unique(scallop.measured) #remove redundancies
 
 
-#Track shell excluded
-ScallopData<-dplyr::bind_rows(ScallopData,Thrownout)
-ScallopData<-unique(ScallopData) #remove redundancies
-scallop.exclude<-anti_join(ScallopData,scallop.invoice, by=c("submitter_sample_id","submitter_specimen_id"))
-
 #Plot invoiced shell histogram
 ggplot()+
   geom_histogram(ScallopData,mapping= aes(x=length, fill="Collection"), binwidth = 2)+
@@ -136,24 +160,6 @@ ggplot()+
   theme_bw()+
   scale_fill_manual(values=c("grey","black","red"))
 
-#Convert ADU sample ID from Observer samples
-if(unique(scallop.invoice$fishery_code)== "CO"){
-  scallop.invoice$ADUID<-paste(substr(scallop.invoice$sample_year,start = 3, stop = 4),
-                                scallop.invoice$management_area_code,
-                                substr(scallop.invoice$effort_no,start=6,stop=9),"~",
-                                substr(formatC(scallop.invoice$trip_no, width=2, flag="0"),start=2,stop=4),sep = "")
-} else {
-  scallop.invoice$ADUID<-scallop.invoice$submitter_sample_id   
-}
-
-if(unique(scallop.exclude$fishery_code)== "CO"){
-  scallop.exclude$ADUID<-paste(substr(scallop.exclude$sample_year,start = 3, stop = 4),
-                               scallop.exclude$management_area_code,
-                               substr(scallop.exclude$effort_no,start=6,stop=9),"~",
-                               substr(formatC(scallop.exclude$trip_no, width=2, flag="0"),start=2,stop=4),sep = "")
-} else {
-  scallop.exclude$ADUID<-scallop.exclude$submitter_sample_id   
-}
 
 
 
@@ -166,7 +172,7 @@ colnames(scallop.field)=c("ADU SAMPLE ID",	"ADU SPECIMEN NUMBER",	"SAMPLE DATE",
                           "FIELD SPECIMEN COMMENT")
 scallop.field$`FISH WEIGHT TYPE`<-ifelse(scallop.field$`FISH WEIGHT g`>0,"WH","")
 
-scallop.invoice<-Scallop_invoive_2019_2020_CO_
+#scallop.invoice<-Scallop_invoive_2019_2020_CO_
 scallop.invoice$management_area_code<-left_join(scallop.invoice,Location[,c(1,3)],by=c("location_code"="LOCATION_CODE"))$MANAGEMENT_AREA_CODE
 scallop.exclude$management_area_code<-left_join(scallop.exclude,Location[,c(1,3)],by=c("location_code"="LOCATION_CODE"))$MANAGEMENT_AREA_CODE
 
