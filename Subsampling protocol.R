@@ -21,7 +21,7 @@ while(!require(dplyr)){install.packages("dplyr")}
 while(!require(openxlsx)){install.packages("openxlsx")}
 while(!require(naniar)){install.packages("naniar")}
 while(!require(readxl)){install.packages("readxl")}
-
+while(!require(readxl)){install.packages("Rcpp")}
 
 
 #Make Bins
@@ -144,9 +144,10 @@ scallop.measured$date_sampled<-as.Date(scallop.measured$date_sampled)
 
 #sample 2 scallops from each location:bin
 #sample 30 scallops from each location:bin
+
 for (i in unique(scallop.invoice$location_code)){
   subset2<-scallop.invoice[scallop.invoice$location_code == i,]
-  if (subset2>30){
+  if (nrow(subset2)>30){
     subset2<-sample_n(subset2,30, replace = TRUE)
   } 
   scallop.measured[nrow(scallop.measured)+1:nrow(subset2),]<-subset2
@@ -183,7 +184,6 @@ colnames(scallop.field)=c("ADU SAMPLE ID",	"ADU SPECIMEN NUMBER",	"SAMPLE DATE",
                           "FIELD SPECIMEN COMMENT")
 scallop.field$`FISH WEIGHT TYPE`<-ifelse(scallop.field$`FISH WEIGHT g`>0,"WH","")
 
-#scallop.invoice<-Scallop_invoive_2019_2020_CO_
 scallop.invoice$management_area_code<-left_join(scallop.invoice,Location[,c(1,3)],by=c("location_code"="LOCATION_CODE"))$MANAGEMENT_AREA_CODE
 scallop.exclude$management_area_code<-left_join(scallop.exclude,Location[,c(1,3)],by=c("location_code"="LOCATION_CODE"))$MANAGEMENT_AREA_CODE
 
@@ -219,10 +219,6 @@ if(unique(scallop.invoicing.exclude$fishery_code)== "SU"){
   scallop.invoicing.exclude[,c(16)]<-cbind(scallop.exclude$submitter_specimen_id,scallop.exclude$submitter_specimen_id)
 }
 
-write.csv(scallop.invoice, paste("Scallop.invoive",paste(unique(ScallopData$sample_year),collapse = "."),
-                           paste(unique(ScallopData$fishery_code),collapse = "."), ".csv",
-                           sep="_")) #exports thrownout data into csv
-
 if(unique(scallop.exclude$fishery_code)== "CO"){
   scallop.field.exclude<-cbind(scallop.exclude$ADUID,
                                as.numeric(substr(scallop.exclude$submitter_specimen_id,start=24,stop=26)),
@@ -240,9 +236,9 @@ colnames(scallop.field.exclude)=c("ADU SAMPLE ID",	"ADU SPECIMEN NUMBER",	"SAMPL
 scallop.field$`ADU SAMPLE ID`<-as.character(scallop.field$`ADU SAMPLE ID`)
 scallop.measured$ADUID<-as.character(scallop.measured$ADUID)
 scallop.field.exclude$`FISH WEIGHT TYPE`<-ifelse(scallop.field.exclude$`FISH WEIGHT g`>0,"WH","")
-scallop.field<-left_join(scallop.field,scallop.measured[,c(24,25,12)], by=c("ADU SAMPLE ID"="ADUID","ADU SPECIMEN NUMBER"="submitter_specimen_id"))
+scallop.field<-left_join(scallop.field,scallop.measured[,c('BinLocation','ADUID','submitter_specimen_id')], by=c("ADU SAMPLE ID"="ADUID","ADU SPECIMEN NUMBER"="submitter_specimen_id"))
 scallop.field$BinLocation[!is.na(scallop.field$BinLocation)] <- "Measure"
-scallop.field$`FIELD SPECIMEN COMMENT`<-paste(na.omit(scallop.field$`FIELD SPECIMEN COMMENT`),scallop.field$submitter_specimen_id)
+scallop.field$`FIELD SPECIMEN COMMENT`<-paste(na.omit(scallop.field$`FIELD SPECIMEN COMMENT`),scallop.field$BinLocation)
 scallop.field$`FIELD SPECIMEN COMMENT`<-na_if(scallop.field$`FIELD SPECIMEN COMMENT`," NA")
 scallop.field<-scallop.field[,-12]
 
@@ -257,8 +253,8 @@ dir.create(file.path(getwd(), "Line_Profile_list"))}
 wb <- loadWorkbook("Scallop_Invoice_template2.xlsx")
 writeData(wb,x=scallop.invoicing,sheet="sample invoice form", startRow = 8, startCol = 1, colNames = FALSE, rowNames = FALSE)
 writeData(wb,x=format(Sys.time(), "%m/%d/%Y"),sheet="sample invoice form", startRow = 4, startCol = 13, colNames = FALSE, rowNames = FALSE)
-saveWorkbook(wb,paste("Invoices/Scallop.invoive",paste(unique(ScallopData$sample_year),collapse = "."),
-                      paste(unique(ScallopData$fishery_code),collapse = "."), ".xlsx",
+saveWorkbook(wb,paste("Invoices/Scallop.invoive",paste(unique(scallop.invoice$sample_year),collapse = "."),
+                      paste(unique(scallop.invoice$fishery_code),collapse = "."), ".xlsx",
                       sep="_"),overwrite = T)
 #Export Sample Invoice of excluded specimens
 wb <- loadWorkbook("Scallop_Invoice_template2.xlsx")
