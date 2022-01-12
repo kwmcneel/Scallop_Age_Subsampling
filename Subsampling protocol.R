@@ -276,6 +276,6 @@ saveWorkbook(wb,paste("Excluded_Field_Data/Scallop.Field_Data.Excluded",paste(un
                       paste(unique(ScallopData$fishery_code),collapse = "."), ".xlsx",
                       sep="_"),overwrite = T)
 #Export list of specimens to measure
-write.csv(scallop.measured[,c(1,24,25,2,4,5,7,8,12,22)], paste("Line_Profile_list/ToMeasure",paste(unique(scallop.measured$sample_year),collapse = "."),
+write.csv(scallop.measured[,c('sample_year', 'location_code', 'ADUID', 'ADU_SPECIMEN_ID','specimen_comment','Bin')], paste("Line_Profile_list/ToMeasure",paste(unique(scallop.measured$sample_year),collapse = "."),
                            paste(unique(scallop.measured$fishery_code),collapse = "."), ".csv",
                            sep="_")) #exports thrownout data into csv
