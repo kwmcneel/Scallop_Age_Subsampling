@@ -10,4 +10,10 @@ Invoices
 Excluded_Invoices
 Excluded_Field_Data
 Archived Invoices
+plots/
+Field_Data/
+Invoices/
+Excluded_Invoices/
+Excluded_Field_Data/
+Archived Invoices/
 ADU-ScallopShellData-Obs2017.csv
