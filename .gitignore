@@ -3,3 +3,11 @@
 .RData
 .Ruserdata
 packrat/lib*/
+packrat
+plots
+Field_Data
+Invoices
+Excluded_Invoices
+Excluded_Field_Data
+Archived Invoices
+ADU-ScallopShellData-Obs2017.csv

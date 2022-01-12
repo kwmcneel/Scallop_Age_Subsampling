@@ -13,6 +13,8 @@
 #I recommend this sample size for each district for the time being. If we find that there are unique areas that
 #need more information we can increase the sample size from our archived, but unaged, collection.
 
+gitcreds::gitcreds_set()
+
 #Load data####
 while(!require(readr)){install.packages("readr")}
 while(!require(ggplot2)){install.packages("ggplot2")}
@@ -32,11 +34,11 @@ names(Bins)<-"Bin.Start"}
 
 #load and format data
 ScallopData<- read_csv(file=file.choose(), 
-  col_types = cols(date_sampled = col_date(format = "%m-%d-%Y"), 
+  col_types = cols(date_sampled = col_date(format = "%m%.%d%.%Y"), 
   effort_no = col_character(), field_species_code = col_character(), 
   gear_code = col_character(), management_area_code = col_character(), 
   maturity_code = col_character(), 
-  sample_date = col_date(format = "%m/%d/%Y"), 
+  sample_date = col_date(format = "%m%.%d%.%Y"), 
   specimen_comment = col_character(), 
   submitter_sample_id = col_character()))
 
@@ -222,18 +224,25 @@ write.csv(scallop.invoice, paste("Scallop.invoive",paste(unique(ScallopData$samp
                            paste(unique(ScallopData$fishery_code),collapse = "."), ".csv",
                            sep="_")) #exports thrownout data into csv
 
-scallop.field.exclude<-cbind(scallop.exclude$ADUID,
-                     as.numeric(substr(scallop.exclude$submitter_specimen_id,start=24,stop=26)),
-                     scallop.exclude$sample_date,scallop.exclude[,c(14:21)])
+if(unique(scallop.exclude$fishery_code)== "CO"){
+  scallop.field.exclude<-cbind(scallop.exclude$ADUID,
+                               as.numeric(substr(scallop.exclude$submitter_specimen_id,start=24,stop=26)),
+                               scallop.exclude$sample_date,scallop.exclude[,c(14:21)])
+}else{
+  scallop.field.exclude<-cbind(scallop.exclude$ADUID,
+                               as.numeric(scallop.exclude$submitter_specimen_id,start=24,stop=26),
+                               scallop.exclude$sample_date,scallop.exclude[,c(14:21)])
+}
 
 colnames(scallop.field.exclude)=c("ADU SAMPLE ID",	"ADU SPECIMEN NUMBER",	"SAMPLE DATE",	
                           "FIELD SPECIES CODE",	"FISH LENGTH mm",	"FISH LENGTH TYPE",
                           "FISH WEIGHT g",	"FISH WEIGHT TYPE",	"GENDER",	"REGIONAL_MATURITY",
                           "FIELD SPECIMEN COMMENT")
-
+scallop.field$`ADU SAMPLE ID`<-as.character(scallop.field$`ADU SAMPLE ID`)
+scallop.measured$ADUID<-as.character(scallop.measured$ADUID)
 scallop.field.exclude$`FISH WEIGHT TYPE`<-ifelse(scallop.field.exclude$`FISH WEIGHT g`>0,"WH","")
-scallop.field<-left_join(scallop.field,scallop.measured[,c(24,25,12)], by=c("ADU SAMPLE ID"="ADUID","ADU SPECIMEN NUMBER"="ADU_SPECIMEN_ID"))
-scallop.field$submitter_specimen_id[!is.na(scallop.field$submitter_specimen_id)] <- "Measure"
+scallop.field<-left_join(scallop.field,scallop.measured[,c(24,25,12)], by=c("ADU SAMPLE ID"="ADUID","ADU SPECIMEN NUMBER"="submitter_specimen_id"))
+scallop.field$BinLocation[!is.na(scallop.field$BinLocation)] <- "Measure"
 scallop.field$`FIELD SPECIMEN COMMENT`<-paste(na.omit(scallop.field$`FIELD SPECIMEN COMMENT`),scallop.field$submitter_specimen_id)
 scallop.field$`FIELD SPECIMEN COMMENT`<-na_if(scallop.field$`FIELD SPECIMEN COMMENT`," NA")
 scallop.field<-scallop.field[,-12]
