@@ -13,7 +13,6 @@
 #I recommend this sample size for each district for the time being. If we find that there are unique areas that
 #need more information we can increase the sample size from our archived, but unaged, collection.
 
-gitcreds::gitcreds_set()
 
 #Load data####
 while(!require(readr)){install.packages("readr")}
