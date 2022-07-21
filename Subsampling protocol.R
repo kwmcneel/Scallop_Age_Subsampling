@@ -15,6 +15,7 @@
 
 
 #Load data####
+while(!require(renv)){install.packages("renv")}
 while(!require(readr)){install.packages("readr")}
 while(!require(ggplot2)){install.packages("ggplot2")}
 while(!require(dplyr)){install.packages("dplyr")}
@@ -86,7 +87,7 @@ write.csv(Thrownout, paste("Thrownout",paste(unique(ScallopData$sample_year),col
                            sep="_")) #exports thrownout data into csv
 
 #Assign Bins and subsample data####
-
+scallop.invoice<-Scallop_invoice_2020_SU_
 ScallopData$Bin<- cut(ScallopData$length, Bins$Bin.Start) #assign scallops to bin
 ScallopData$BinLocation<-mapply(paste,ScallopData$location_code,ScallopData$Bin) #set unique bins by location
 ScallopData$Bin<- as.character(cut(ScallopData$length, Bins$Bin.Start)) #assign scallops to bin
@@ -259,7 +260,7 @@ saveWorkbook(wb,paste("Invoices/Scallop.invoive",paste(unique(scallop.invoice$sa
 #Export Sample Invoice of excluded specimens
 wb <- loadWorkbook("Scallop_Invoice_template2.xlsx")
 writeData(wb,x=scallop.invoicing.exclude,sheet="sample invoice form", startRow = 8, startCol = 1, colNames = FALSE, rowNames = FALSE)
-writeData(wb,x=format(Sys.time(), "%m/%d/%Y"),sheet="sample invoice form", startRow = 4, startCol = 13, colNames = FALSE, rowNames = FALSE)
+writeData(wb,x=format(Sys.time(), "%m/%d/%Y"),sheet="sample invoice form", startRow = 4, startCol = 14, colNames = FALSE, rowNames = FALSE)
 saveWorkbook(wb,paste("Excluded_Invoices/Scallop.invoive_excluded",paste(unique(ScallopData$sample_year),collapse = "."),
                       paste(unique(ScallopData$fishery_code),collapse = "."), ".xlsx",
                       sep="_"),overwrite = T)
@@ -279,3 +280,4 @@ saveWorkbook(wb,paste("Excluded_Field_Data/Scallop.Field_Data.Excluded",paste(un
 write.csv(scallop.measured[,c('sample_year', 'location_code', 'ADUID', 'ADU_SPECIMEN_ID','specimen_comment','Bin')], paste("Line_Profile_list/ToMeasure",paste(unique(scallop.measured$sample_year),collapse = "."),
                            paste(unique(scallop.measured$fishery_code),collapse = "."), ".csv",
                            sep="_")) #exports thrownout data into csv
+
