@@ -53,7 +53,7 @@ Location <- read_excel("Location.xlsx")
 
 #Clean Data####
 #Clean data of NAs and 0s for length
-rm(Thrownout)
+
 Thrownout<-ScallopData[complete.cases(ScallopData[,c(8,15)]) == FALSE,] #pull out rows where length and location =NA
 Thrownout<-rbind(Thrownout, filter(ScallopData, length == 0)) #pull rows where length =0
 Thrownout<-rbind(Thrownout, filter(ScallopData, weight == 0))#pull rows where weight =0
@@ -84,6 +84,7 @@ Thrownout<- Thrownout[complete.cases(Thrownout[,6]),] #removes blank rows
 
 
 #Assign Bins and subsample data####
+
 ScallopData$Bin<- cut(ScallopData$length, Bins$Bin.Start) #assign scallops to bin
 ScallopData$BinLocation<-mapply(paste,ScallopData$location_code,ScallopData$Bin) #set unique bins by location
 ScallopData$Bin<- as.character(cut(ScallopData$length, Bins$Bin.Start)) #assign scallops to bin
@@ -281,6 +282,6 @@ saveWorkbook(wb,paste("Excluded_Field_Data/Scallop.Field_Data.Excluded",paste(un
                       sep="_"),overwrite = T)
 #Export list of specimens to measure
 write.csv(scallop.measured[,c('sample_year', 'location_code', 'ADUID', 'ADU_SPECIMEN_ID','specimen_comment','Bin')], paste("Line_Profile_list/ToMeasure",paste(unique(scallop.measured$sample_year),collapse = "."),
-                           paste(unique(scallop.measured$fishery_code),collapse = "."), ".csv",
-                           sep="_")) 
+                           paste(unique(scallop.measured$fishery_code),collapse = "."), ".csv",sep="_")) 
+
 
