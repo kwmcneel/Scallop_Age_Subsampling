@@ -24,7 +24,7 @@ while(!require(naniar)){install.packages("naniar")}
 while(!require(readxl)){install.packages("readxl")}
 while(!require(readxl)){install.packages("Rcpp")}
 
-
+renv::migrate()
 #Make Bins
 {rm(list = ls())
   Bins<-as.data.frame(c(0,25,50,75,77,79,81,83,85,87,89,91,93,95,97,99,101,103,105,107,109,111,113,115,117,119,121,123,125,
@@ -40,10 +40,10 @@ ScallopData<- read_csv(file=file.choose(),
   maturity_code = col_character(), 
   sample_date = col_date(format = "%m%.%d%.%Y"), 
   specimen_comment = col_character(), 
-  submitter_sample_id = col_character()))
+  submitter_sample_id = col_character()),
+  na="NULL") #Include na="NULL" for dataframes with text for null and change as needed
 
 Location <- read_excel("Location.xlsx")
-
 
 #Assign Bin and clean data####
 ###This script removes shell that have no length, length of 0, weight of 0 for survey scallops, and
@@ -53,23 +53,22 @@ Location <- read_excel("Location.xlsx")
 
 #Clean Data####
 #Clean data of NAs and 0s for length
-
-{Thrownout<-ScallopData[!complete.cases(ScallopData[,c(8,15)]),] #pull out rows where length and location =NA
-Thrownout<-rbind(Thrownout, ScallopData[ScallopData$length == 0,]) #pull rows where length =0
-Thrownout<-rbind(Thrownout, ScallopData[ScallopData$weight == 0,]) #pull rows where weight =0
+rm(Thrownout)
+Thrownout<-ScallopData[complete.cases(ScallopData[,c(8,15)]) == FALSE,] #pull out rows where length and location =NA
+Thrownout<-rbind(Thrownout, filter(ScallopData, length == 0)) #pull rows where length =0
+Thrownout<-rbind(Thrownout, filter(ScallopData, weight == 0))#pull rows where weight =0
 
 ScallopData<- ScallopData[complete.cases(ScallopData[,c(8,15)]),] #remove rows where length =NA
 ScallopData<-ScallopData[ScallopData$length!=0,] #remove rows where length =0
-}
+
 
 #Run a Weight:Length model and remove outliers for survey data
-if (unique(ScallopData$fishery_code)=="SU"){ScallopData<-ScallopData[ScallopData$weight!=0,] #remove rows where weight=0 for survey scallops
-  LWmod<-lm(log(weight)~log(length),data=ScallopData)
+  LWmod<-lm(log(weight+0.0000001)~log(length),data=ScallopData)
   res<-LWmod$residuals
-  upper<-mean(res)+(10*sd(res)) 
-  ScallopData$res<-LWmod$residuals
-  filtered<-ScallopData[abs(ScallopData$res)>upper,]
-  ScallopData<-ScallopData[abs(ScallopData$res)<=upper,]
+  upper<-mean(res)+(4*sd(res)) 
+  ScallopData[names(LWmod$residuals),"res"]<-LWmod$residuals
+  filtered<-filter(ScallopData, abs(res)>upper)
+  ScallopData1<-filter(ScallopData, abs(ScallopData$res)<=upper|is.na(abs(ScallopData$res)))
   Thrownout<-rbind(Thrownout,filtered[,-22]) #add data from outlier model to thrownout
   #plot results from outlier model. removed values should be in red and can be pulled up in dataframe "filtered"
   plot(ScallopData$weight~ScallopData$length,
@@ -79,15 +78,12 @@ if (unique(ScallopData$fishery_code)=="SU"){ScallopData<-ScallopData[ScallopData
        ylab="Whole Weight (g)")
     points(Thrownout$weight~Thrownout$length, col="red")
     legend("topleft", inset=.05, legend=c("Scallop Data","Removed Data"),col=c("black","red"),pch=c(1,1),box.lty = 0)
-}
+
 
 Thrownout<- Thrownout[complete.cases(Thrownout[,6]),] #removes blank rows
-write.csv(Thrownout, paste("Thrownout",paste(unique(ScallopData$sample_year),collapse = "."),
-                           paste(unique(ScallopData$fishery_code),collapse = "."), ".csv",
-                           sep="_")) #exports thrownout data into csv
+
 
 #Assign Bins and subsample data####
-scallop.invoice<-Scallop_invoice_2020_SU_
 ScallopData$Bin<- cut(ScallopData$length, Bins$Bin.Start) #assign scallops to bin
 ScallopData$BinLocation<-mapply(paste,ScallopData$location_code,ScallopData$Bin) #set unique bins by location
 ScallopData$Bin<- as.character(cut(ScallopData$length, Bins$Bin.Start)) #assign scallops to bin
@@ -99,7 +95,7 @@ scallop.invoice$date_sampled<-as.Date(scallop.invoice$date_sampled)
 #sample 6 scallops from each location:bin
 for (i in unique(ScallopData$BinLocation)){
   subset<-ScallopData[ScallopData$BinLocation == i,]
-  if (subset>6){
+  if (length(subset)>6){
     subset<-sample_n(subset,5, replace = TRUE)
     } 
   scallop.invoice[nrow(scallop.invoice)+1:nrow(subset),]<-subset
@@ -116,13 +112,12 @@ scallop.exclude<-anti_join(ScallopData,scallop.invoice, by=c("submitter_sample_i
 
 #Convert ADU sample ID from Observer samples
 
-if(unique(scallop.invoice$fishery_code)== "CO"){
+if(unique(scallop.invoice$fishery_code)== "CO"){ #[!is.na(scallop.invoice$fishery_code)] can be used if argument is greater than 1, but check why there is an NA fishery code
   scallop.invoice$ADUID<-paste(substr(scallop.invoice$sample_year,start = 3, stop = 4),
                                substr(scallop.invoice$submitter_sample_id,start=1,stop=1),
                                substr(scallop.invoice$effort_no,start=6,stop=9),"~",
                                substr(formatC(scallop.invoice$trip_no, width=3, flag="0"),start=1,stop=4),sep = "")
   
-?formatC  
 } else {
   scallop.invoice$ADUID<-scallop.invoice$submitter_sample_id   
 }
@@ -237,18 +232,26 @@ colnames(scallop.field.exclude)=c("ADU SAMPLE ID",	"ADU SPECIMEN NUMBER",	"SAMPL
 scallop.field$`ADU SAMPLE ID`<-as.character(scallop.field$`ADU SAMPLE ID`)
 scallop.measured$ADUID<-as.character(scallop.measured$ADUID)
 scallop.field.exclude$`FISH WEIGHT TYPE`<-ifelse(scallop.field.exclude$`FISH WEIGHT g`>0,"WH","")
-scallop.field<-left_join(scallop.field,scallop.measured[,c('BinLocation','ADUID','submitter_specimen_id')], by=c("ADU SAMPLE ID"="ADUID","ADU SPECIMEN NUMBER"="submitter_specimen_id"))
+scallop.field<-left_join(scallop.field,scallop.measured[,c('BinLocation','ADUID','submitter_specimen_id','ADU_SPECIMEN_ID')], by=c("ADU SAMPLE ID"="ADUID","ADU SPECIMEN NUMBER"="ADU_SPECIMEN_ID"))
 scallop.field$BinLocation[!is.na(scallop.field$BinLocation)] <- "Measure"
 scallop.field$`FIELD SPECIMEN COMMENT`<-paste(na.omit(scallop.field$`FIELD SPECIMEN COMMENT`),scallop.field$BinLocation)
 scallop.field$`FIELD SPECIMEN COMMENT`<-na_if(scallop.field$`FIELD SPECIMEN COMMENT`," NA")
 scallop.field<-scallop.field[,-12]
 
 #create subdirectory for .xlsx
-{dir.create(file.path(getwd(), "Invoices"))
-dir.create(file.path(getwd(), "Field_Data"))
-dir.create(file.path(getwd(), "Excluded_Invoices"))
-dir.create(file.path(getwd(), "Excluded_Field_Data"))
-dir.create(file.path(getwd(), "Line_Profile_list"))}
+
+{while(!file.exists("Invoices")){dir.create(file.path(getwd(), "Invoices"))}
+while(!file.exists("Field_Data")){dir.create(file.path(getwd(), "Field_Data"))}
+while(!file.exists("Excluded_Invoices")){dir.create(file.path(getwd(), "Excluded_Invoices"))}
+while(!file.exists("Excluded_Field_Data")){dir.create(file.path(getwd(), "Excluded_Field_Data"))}
+while(!file.exists("Line_Profile_list")){dir.create(file.path(getwd(), "Line_Profile_list"))}
+while(!file.exists("Errors")){dir.create(file.path(getwd(), "Errors"))}}
+
+#Export Errors/ Thrownout data####
+
+write.csv(Thrownout, paste("Errors/Thrownout",paste(unique(ScallopData$sample_year),collapse = "."),
+                           paste(unique(ScallopData$fishery_code),collapse = "."), ".csv",
+                           sep="_")) #exports thrownout data into csv
 
 #Export Sample Invoices####
 wb <- loadWorkbook("Scallop_Invoice_template2.xlsx")
@@ -265,13 +268,13 @@ saveWorkbook(wb,paste("Excluded_Invoices/Scallop.invoive_excluded",paste(unique(
                       paste(unique(ScallopData$fishery_code),collapse = "."), ".xlsx",
                       sep="_"),overwrite = T)
 #Export Field Data####
-wb <- loadWorkbook("Scallop_Field_Data_template.xlsx")
+wb <- loadWorkbook("Scallop_Field_Data_template3.xlsx")
 writeData(wb,x=scallop.field,sheet="FIELD DATA IMPORT", startRow = 2, startCol = 1, colNames = FALSE, rowNames = FALSE)
 saveWorkbook(wb,paste("Field_Data/Scallop.Field_Data",paste(unique(scallop.invoice$sample_year),collapse = "."),
                       paste(unique(scallop.invoice$fishery_code),collapse = "."), ".xlsx",
                       sep="_"),overwrite = T)
 #Export Field Data of excluded specimens
-wb <- loadWorkbook("Scallop_Field_Data_template.xlsx")
+wb <- loadWorkbook("Scallop_Field_Data_template3.xlsx")
 writeData(wb,x=scallop.field.exclude,sheet="FIELD DATA IMPORT", startRow = 2, startCol = 1, colNames = FALSE, rowNames = FALSE)
 saveWorkbook(wb,paste("Excluded_Field_Data/Scallop.Field_Data.Excluded",paste(unique(ScallopData$sample_year),collapse = "."),
                       paste(unique(ScallopData$fishery_code),collapse = "."), ".xlsx",
@@ -279,5 +282,5 @@ saveWorkbook(wb,paste("Excluded_Field_Data/Scallop.Field_Data.Excluded",paste(un
 #Export list of specimens to measure
 write.csv(scallop.measured[,c('sample_year', 'location_code', 'ADUID', 'ADU_SPECIMEN_ID','specimen_comment','Bin')], paste("Line_Profile_list/ToMeasure",paste(unique(scallop.measured$sample_year),collapse = "."),
                            paste(unique(scallop.measured$fishery_code),collapse = "."), ".csv",
-                           sep="_")) #exports thrownout data into csv
+                           sep="_")) 
 
