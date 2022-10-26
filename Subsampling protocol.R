@@ -23,8 +23,8 @@ while(!require(openxlsx)){install.packages("openxlsx")}
 while(!require(naniar)){install.packages("naniar")}
 while(!require(readxl)){install.packages("readxl")}
 while(!require(readxl)){install.packages("Rcpp")}
+renv::activate()
 
-renv::migrate()
 #Make Bins
 {rm(list = ls())
   Bins<-as.data.frame(c(0,25,50,75,77,79,81,83,85,87,89,91,93,95,97,99,101,103,105,107,109,111,113,115,117,119,121,123,125,
@@ -42,6 +42,12 @@ ScallopData<- read_csv(file=file.choose(),
   specimen_comment = col_character(), 
   submitter_sample_id = col_character()),
   na="NULL") #Include na="NULL" for dataframes with text for null and change as needed
+
+ScallopData<-ScallopData %>%
+  mutate(across(where(is.numeric), ~na_if(., 0))) %>%
+  mutate(across(where(is.character), ~na_if(., "NA"))) %>%
+  mutate(across(where(is.character), ~na_if(., "missing"))) %>% 
+  mutate(across(where(is.character), ~na_if(., "NULL")))
 
 Location <- read_excel("Location.xlsx")
 
@@ -179,8 +185,14 @@ colnames(scallop.field)=c("ADU SAMPLE ID",	"ADU SPECIMEN NUMBER",	"SAMPLE DATE",
                           "FIELD SPECIES CODE",	"FISH LENGTH mm",	"FISH LENGTH TYPE",
                           "FISH WEIGHT g",	"FISH WEIGHT TYPE",	"GENDER",	"REGIONAL_MATURITY",
                           "FIELD SPECIMEN COMMENT")
-scallop.field$`FISH WEIGHT TYPE`<-ifelse(scallop.field$`FISH WEIGHT g`>0,"WH","")
 
+scallop.invoice<-scallop.invoice %>%
+  mutate(across(where(is.numeric), ~na_if(., 0))) %>%
+  mutate(across(where(is.character), ~na_if(., "NA"))) %>%
+  mutate(across(where(is.character), ~na_if(., "missing"))) %>% 
+  mutate(across(where(is.character), ~na_if(., "NULL")))
+  
+scallop.field$`FISH WEIGHT TYPE`<-ifelse(scallop.field$`FISH WEIGHT g`>0,"WH","")
 scallop.invoice$management_area_code<-left_join(scallop.invoice,Location[,c(1,3)],by=c("location_code"="LOCATION_CODE"))$MANAGEMENT_AREA_CODE
 scallop.exclude$management_area_code<-left_join(scallop.exclude,Location[,c(1,3)],by=c("location_code"="LOCATION_CODE"))$MANAGEMENT_AREA_CODE
 
@@ -230,7 +242,7 @@ colnames(scallop.field.exclude)=c("ADU SAMPLE ID",	"ADU SPECIMEN NUMBER",	"SAMPL
                           "FIELD SPECIES CODE",	"FISH LENGTH mm",	"FISH LENGTH TYPE",
                           "FISH WEIGHT g",	"FISH WEIGHT TYPE",	"GENDER",	"REGIONAL_MATURITY",
                           "FIELD SPECIMEN COMMENT")
-scallop.field$`ADU SAMPLE ID`<-as.character(scallop.field$`ADU SAMPLE ID`)
+scallop.field$`ADU SPECIMEN NUMBER`<-as.character(scallop.field$`ADU SPECIMEN NUMBER`)
 scallop.measured$ADUID<-as.character(scallop.measured$ADUID)
 scallop.field.exclude$`FISH WEIGHT TYPE`<-ifelse(scallop.field.exclude$`FISH WEIGHT g`>0,"WH","")
 scallop.field<-left_join(scallop.field,scallop.measured[,c('BinLocation','ADUID','submitter_specimen_id','ADU_SPECIMEN_ID')], by=c("ADU SAMPLE ID"="ADUID","ADU SPECIMEN NUMBER"="ADU_SPECIMEN_ID"))
