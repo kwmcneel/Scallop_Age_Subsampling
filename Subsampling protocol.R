@@ -270,7 +270,7 @@ write.csv(Thrownout, paste("Errors/Thrownout",paste(unique(ScallopData$sample_ye
 wb <- loadWorkbook("Scallop_Invoice_template2.xlsx")
 writeData(wb,x=scallop.invoicing,sheet="sample invoice form", startRow = 8, startCol = 1, colNames = FALSE, rowNames = FALSE)
 writeData(wb,x=format(Sys.time(), "%m/%d/%Y"),sheet="sample invoice form", startRow = 4, startCol = 13, colNames = FALSE, rowNames = FALSE)
-saveWorkbook(wb,paste("Invoices/Scallop.invoive",paste(unique(scallop.invoice$sample_year),collapse = "."),
+saveWorkbook(wb,paste("Invoices/Scallop.invoice",paste(unique(scallop.invoice$sample_year),collapse = "."),
                       paste(unique(scallop.invoice$fishery_code),collapse = "."), ".xlsx",
                       sep="_"),overwrite = T)
 #Export Sample Invoice of excluded specimens
