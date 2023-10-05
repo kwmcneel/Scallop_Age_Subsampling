@@ -23,8 +23,8 @@ while(!require(openxlsx)){install.packages("openxlsx")}
 while(!require(naniar)){install.packages("naniar")}
 while(!require(readxl)){install.packages("readxl")}
 while(!require(readxl)){install.packages("Rcpp")}
-renv::activate()
-
+#renv::activate()
+#renv::snapshot()
 #Make Bins
 {rm(list = ls())
   Bins<-as.data.frame(c(0,25,50,75,77,79,81,83,85,87,89,91,93,95,97,99,101,103,105,107,109,111,113,115,117,119,121,123,125,
@@ -69,10 +69,10 @@ ScallopData<-ScallopData[ScallopData$length!=0,] #remove rows where length =0
 
 
 #Run a Weight:Length model and remove outliers for survey data
-  LWmod<-lm(log(weight+0.0000001)~log(length),data=ScallopData)
+  LWmod<-lm(log(weight+0.0000001)~log(length),data=ScallopData,na.action=na.exclude)
   res<-LWmod$residuals
   upper<-mean(res)+(4*sd(res)) 
-  ScallopData[names(LWmod$residuals),"res"]<-LWmod$residuals
+  ScallopData$res<-LWmod$residuals
   filtered<-filter(ScallopData, abs(res)>upper)
   ScallopData1<-filter(ScallopData, abs(ScallopData$res)<=upper|is.na(abs(ScallopData$res)))
   Thrownout<-rbind(Thrownout,filtered[,-22]) #add data from outlier model to thrownout
@@ -109,7 +109,7 @@ for (i in unique(ScallopData$BinLocation)){
 }
 
 scallop.invoice<-unique(scallop.invoice) #remove redundancies
-
+#scallop.invoice<-ScallopData #run if importing all data
 
 #Track shell excluded
 ScallopData<-dplyr::bind_rows(ScallopData,Thrownout)
@@ -185,12 +185,6 @@ colnames(scallop.field)=c("ADU SAMPLE ID",	"ADU SPECIMEN NUMBER",	"SAMPLE DATE",
                           "FIELD SPECIES CODE",	"FISH LENGTH mm",	"FISH LENGTH TYPE",
                           "FISH WEIGHT g",	"FISH WEIGHT TYPE",	"GENDER",	"REGIONAL_MATURITY",
                           "FIELD SPECIMEN COMMENT")
-
-scallop.invoice<-scallop.invoice %>%
-  mutate(across(where(is.numeric), ~na_if(., 0))) %>%
-  mutate(across(where(is.character), ~na_if(., "NA"))) %>%
-  mutate(across(where(is.character), ~na_if(., "missing"))) %>% 
-  mutate(across(where(is.character), ~na_if(., "NULL")))
   
 scallop.field$`FISH WEIGHT TYPE`<-ifelse(scallop.field$`FISH WEIGHT g`>0,"WH","")
 scallop.invoice$management_area_code<-left_join(scallop.invoice,Location[,c(1,3)],by=c("location_code"="LOCATION_CODE"))$MANAGEMENT_AREA_CODE
@@ -219,6 +213,7 @@ if(unique(scallop.measured$fishery_code)== "CO"){
 }else{
   scallop.measured$ADU_SPECIMEN_ID<-scallop.measured$submitter_specimen_id
 }
+scallop.measured$ADU_SPECIMEN_ID<-as.character(scallop.measured$ADU_SPECIMEN_ID)
 
 scallop.invoicing.exclude<-cbind(scallop.exclude[,c(1:12,14)],
                          as.data.frame(rep("VA",length(scallop.exclude$sample_year),colnames="AGE STRUCTURE")),
@@ -243,6 +238,7 @@ colnames(scallop.field.exclude)=c("ADU SAMPLE ID",	"ADU SPECIMEN NUMBER",	"SAMPL
                           "FISH WEIGHT g",	"FISH WEIGHT TYPE",	"GENDER",	"REGIONAL_MATURITY",
                           "FIELD SPECIMEN COMMENT")
 scallop.field$`ADU SPECIMEN NUMBER`<-as.character(scallop.field$`ADU SPECIMEN NUMBER`)
+scallop.field$`ADU SAMPLE ID`<-as.character(scallop.field$`ADU SAMPLE ID`)
 scallop.measured$ADUID<-as.character(scallop.measured$ADUID)
 scallop.field.exclude$`FISH WEIGHT TYPE`<-ifelse(scallop.field.exclude$`FISH WEIGHT g`>0,"WH","")
 scallop.field<-left_join(scallop.field,scallop.measured[,c('BinLocation','ADUID','submitter_specimen_id','ADU_SPECIMEN_ID')], by=c("ADU SAMPLE ID"="ADUID","ADU SPECIMEN NUMBER"="ADU_SPECIMEN_ID"))

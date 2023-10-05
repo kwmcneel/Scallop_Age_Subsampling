@@ -2,22 +2,22 @@
 .Rhistory
 .RData
 .Ruserdata
-plots
-Field_Data
-Invoices
-Excluded_Invoices
+Age Importing
+Errors
 Excluded_Field_Data
-Archived Invoices
-plots/
-Field_Data/
-Invoices/
-Excluded_Invoices/
-Excluded_Field_Data/
-Archived Invoices/
-ADU-ScallopShellData-Obs2017.csv
+Excluded_Invoices
+Images
+Inventory
+Invoices
+Labels
+Field_Data
+Growth Increment Measuring
 Line_Profile_list
-Line_Profile_list/
-Archived Invoices and Data/
-Scallop To do list.xlsx
-Current Data
-Errors/
+Plots
+Projects
+References
+Scallop Error Checks.R
+Software files
+Thumbs.db
+Training and SOP
+scallop_age_sampling_2018_10.pdf
