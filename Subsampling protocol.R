@@ -23,6 +23,7 @@ while(!require(openxlsx)){install.packages("openxlsx")}
 while(!require(naniar)){install.packages("naniar")}
 while(!require(readxl)){install.packages("readxl")}
 while(!require(readxl)){install.packages("Rcpp")}
+while(!require(svDialogs)){install.packages("svDialogs")}
 #renv::activate()
 #renv::snapshot()
 #Make Bins
@@ -32,16 +33,40 @@ while(!require(readxl)){install.packages("Rcpp")}
 183,185,187,189,191,193,195,197,199))
 names(Bins)<-"Bin.Start"}
 
+
+## This is input for file selection
+fisy_type <- dlgInput("Enter Fisheries Type (SU or CO or NA for csv)", "CO")$res
+
+s_year<- dlgInput("Enter Year yyyy","")$res
+
+if(fisy_type== "CO"){ 
+  ScallopDataurl <- paste0("http://kodweb.fishgame.state.ak.us/apps/dda/scallop/fishshells/shellData?year=",s_year)
+} else {
+  if(fisy_type== "SU"){ 
+    ScallopDataurl <- paste0("http://kodweb.fishgame.state.ak.us/apps/dda/scallop/svshells/shellData?year=",s_year)
+  }else {ScallopDataurl <- file.choose()   
+  }}
+
+ScallopData <- read_csv(ScallopDataurl, 
+                         col_types = cols(date_sampled = col_date(format = "%m-%d-%Y"), 
+                        effort_no = col_character(), field_species_code = col_character(), 
+                        gear_code = col_character(), management_area_code = col_character(), 
+                        maturity_code = col_character(), 
+                        sample_date = col_date(format = "%m-%d-%Y"), 
+                        specimen_comment = col_character(), 
+                        submitter_sample_id = col_character()),
+                         na="NULL") #Include na="NULL" for dataframes with text for null and change as needed
+
 #load and format data
-ScallopData<- read_csv(file=file.choose(), 
-  col_types = cols(date_sampled = col_date(format = "%m%.%d%.%Y"), 
-  effort_no = col_character(), field_species_code = col_character(), 
-  gear_code = col_character(), management_area_code = col_character(), 
-  maturity_code = col_character(), 
-  sample_date = col_date(format = "%m%.%d%.%Y"), 
-  specimen_comment = col_character(), 
-  submitter_sample_id = col_character()),
-  na="NULL") #Include na="NULL" for dataframes with text for null and change as needed
+# ScallopData<- read_csv(file=file.choose(), 
+#   col_types = cols(date_sampled = col_date(format = "%m/%d/%Y"), 
+#   effort_no = col_character(), field_species_code = col_character(), 
+#   gear_code = col_character(), management_area_code = col_character(), 
+#   maturity_code = col_character(), 
+#   sample_date = col_date(format = "%m/%d/%Y"), 
+#   specimen_comment = col_character(), 
+#   submitter_sample_id = col_character()),
+#   na="NULL") #Include na="NULL" for dataframes with text for null and change as needed
 
 ScallopData<-ScallopData %>%
   mutate(across(where(is.numeric), ~na_if(., 0))) %>%
